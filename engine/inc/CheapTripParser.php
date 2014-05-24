@@ -24,7 +24,7 @@ class CheapTripParser {
     private $default_category;
     private $parse;
     private $post_right_now = 1;
-    private $last_post_title;
+    private $last_posts;
     private $contact_info;
     private $default_link;
     private $keywords;
@@ -66,9 +66,9 @@ class CheapTripParser {
         if($this->default_autor == '' || $this->org_name == '' || $this->default_category == NULL){
             die('Set up default author and organization names in options');
         }
-        $this->db->query("SELECT title FROM " . PREFIX . "_post WHERE autor='$this->default_autor' ORDER BY date DESC LIMIT 1");
+        $this->db->query("SELECT date FROM " . PREFIX . "_post WHERE autor='$this->default_autor' ORDER BY date DESC LIMIT 10");
             while($row = $this->db->get_row()){
-                $this->last_post_title = $row['title'];
+                $this->last_posts[] = $row['date'];
             }
 
         $available_categories = array();
@@ -92,6 +92,16 @@ class CheapTripParser {
                 }
             }
 
+            //get post title
+            $pub_date = $this->parse_date(
+                $item->getElementsByTagName('pubDate')->item(0)->nodeValue
+            );
+
+            //compare it to previous posts
+            if(in_array($pub_date, $this->last_posts)){
+                break;
+            }
+
             $title = $this->parse->process(
                 trim(
                     strip_tags($item->getElementsByTagName('title')->item(0)->nodeValue
@@ -100,14 +110,7 @@ class CheapTripParser {
             );
             $title = $this->clear_title($title);
 
-            if($title == $this->last_post_title){
-                break;
-            }
-
             if($this->isValid($categories, $title)){
-                $pub_date = $this->parse_date(
-                    $item->getElementsByTagName('pubDate')->item(0)->nodeValue
-                );
 
                 $short_story = trim(
                     $item->getElementsByTagName('description')->item(0)->nodeValue
